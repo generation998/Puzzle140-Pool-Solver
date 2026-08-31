@@ -2,9 +2,6 @@
 
 Join the public kangaroo **distinguished-point** hunt for [Bitcoin Puzzle 140](https://privatekeys.pw/puzzles/bitcoin-puzzle-tx).
 
-**Pool:** `72.62.76.118:17403`  
-**Open join** — no token, no account.  
-**The private key is never shown on your PC.** If the hunt hits, only the pool server stores it.
 
 This is interval ECDLP on the published puzzle-140 pubkey. It is not a wallet cracker and does not search Bitcoin addresses.
 
