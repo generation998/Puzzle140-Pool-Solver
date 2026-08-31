@@ -2,8 +2,6 @@
 
 Join the public kangaroo distinguished-point hunt for [Bitcoin Puzzle 140](https://privatekeys.pw/puzzles/bitcoin-puzzle-tx).
 
-The private key is never shown on the worker. If the hunt hits, only the pool server stores it.
-
 This is interval ECDLP on the published puzzle-140 pubkey. It does not search Bitcoin addresses.
 
 ## Windows (ready binary)
