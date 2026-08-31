@@ -16,7 +16,7 @@ cd Puzzle140-Pool-Worker
 .\JoinWorker.bat
 ```
 
-Second GPU: `.\JoinWorker.bat 72.62.76.118 1`
+`JoinWorker.bat` starts one process per NVIDIA GPU. Pin a single card with `.\JoinWorker.bat 72.62.76.118 1`.
 
 ## Linux / Vast.ai (build on the instance)
 
@@ -31,7 +31,7 @@ chmod +x JoinWorker.sh
 ./JoinWorker.sh
 ```
 
-`JoinWorker.sh` runs `make` then joins the pool. Extra GPU: `./JoinWorker.sh 72.62.76.118 1`
+`JoinWorker.sh` runs `make`, then starts one process per NVIDIA GPU (`nvidia-smi` or `CUDA_VISIBLE_DEVICES`). Pin a single card with `./JoinWorker.sh 72.62.76.118 1`. Limit a subset with `GPUS=0,3 ./JoinWorker.sh`.
 
 If `git`/`wget` to GitHub hangs (common on some Vast hosts), copy this folder from your PC:
 

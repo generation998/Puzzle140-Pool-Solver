@@ -3,9 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 set HOST=%~1
-set GPU=0
 if "%HOST%"=="" set HOST=72.62.76.118
-if not "%~2"=="" set GPU=%~2
 
 set EXE=
 if exist "%~dp0tools\VanitySearchKang3.exe" set EXE=%~dp0tools\VanitySearchKang3.exe
@@ -19,7 +17,12 @@ if not defined EXE (
   exit /b 1
 )
 
-echo Worker: %EXE%
-echo Pool:   %HOST%:17403   gpu %GPU%
-"%EXE%" -pool %HOST%:17403 -gpuId %GPU% -worker %COMPUTERNAME%
+if not "%~2"=="" (
+  echo Worker: %EXE%
+  echo Pool:   %HOST%:17403   gpu %~2
+  "%EXE%" -pool %HOST%:17403 -gpuId %~2 -worker %COMPUTERNAME%-gpu%~2
+  exit /b %ERRORLEVEL%
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0JoinWorker.ps1" -HostName "%HOST%" -Exe "%EXE%"
 endlocal
