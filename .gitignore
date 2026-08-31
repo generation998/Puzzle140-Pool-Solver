@@ -1,0 +1,5 @@
+pool_spool*.bin
+pool_spool*.ack
+*.obj
+*.lib
+*.exp
