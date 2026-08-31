@@ -2,8 +2,6 @@
 
 Join the public kangaroo distinguished-point hunt for [Bitcoin Puzzle 140](https://privatekeys.pw/puzzles/bitcoin-puzzle-tx).
 
-**Pool:** `72.62.76.118:17403` (no token)
-
 The private key is never shown on the worker. If the hunt hits, only the pool server stores it.
 
 This is interval ECDLP on the published puzzle-140 pubkey. It does not search Bitcoin addresses.
@@ -33,7 +31,7 @@ chmod +x JoinWorker.sh
 ./JoinWorker.sh
 ```
 
-`JoinWorker.sh` runs `make` then connects to `72.62.76.118:17403`. Extra GPU: `./JoinWorker.sh 72.62.76.118 1`
+`JoinWorker.sh` runs `make` then joins the pool. Extra GPU: `./JoinWorker.sh 72.62.76.118 1`
 
 If `git`/`wget` to GitHub hangs (common on some Vast hosts), copy this folder from your PC:
 
