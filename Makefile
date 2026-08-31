@@ -21,7 +21,7 @@ CXX        ?= g++
 NVCC       ?= nvcc
 CUDA       ?= $(shell dirname $(shell dirname $(shell command -v nvcc 2>/dev/null || echo /usr/local/cuda/bin/nvcc)))
 
-CXXFLAGS   = -mssse3 -msse4.1 -Wno-write-strings -O2 -std=c++14 -I. -I$(CUDA)/include
+CXXFLAGS   = -mssse3 -msse4.1 -Wno-write-strings -O2 -std=c++14 -I. -I$(CUDA)/include -include cstdint
 LFLAGS     = -lpthread -L$(CUDA)/lib64 -lcudart
 NVCCFLAGS  = -maxrregcount=0 --compile --compiler-options -fPIC -m64 -O2 -I$(CUDA)/include \
              -gencode=arch=compute_60,code=sm_60 \
