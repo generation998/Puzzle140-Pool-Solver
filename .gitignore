@@ -3,3 +3,6 @@ pool_spool*.ack
 *.obj
 *.lib
 *.exp
+obj/
+VanitySearchKang
+*.o

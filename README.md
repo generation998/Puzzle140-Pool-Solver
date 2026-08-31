@@ -1,61 +1,60 @@
 # Bitcoin Puzzle 140 — GPU pool worker
 
-Join the public kangaroo **distinguished-point** hunt for [Bitcoin Puzzle 140](https://privatekeys.pw/puzzles/bitcoin-puzzle-tx).
+Join the public kangaroo distinguished-point hunt for [Bitcoin Puzzle 140](https://privatekeys.pw/puzzles/bitcoin-puzzle-tx).
 
-**Pool:** `72.62.76.118:17403`  
-**Open join** — no token, no account.  
-**The private key is never shown on your PC.** If the hunt hits, only the pool server stores it.
+**Pool:** `72.62.76.118:17403` (no token)
 
-This is interval ECDLP on the published puzzle-140 pubkey. It is not a wallet cracker and does not search Bitcoin addresses.
+The private key is never shown on the worker. If the hunt hits, only the pool server stores it.
 
-## What you need
+This is interval ECDLP on the published puzzle-140 pubkey. It does not search Bitcoin addresses.
 
-- Windows 10/11 64-bit
-- An **NVIDIA GPU**
-- A current [NVIDIA Game Ready / Studio driver](https://www.nvidia.com/Download/index.aspx)
-- [Visual C++ Redistributable x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)
+## Windows (ready binary)
 
-You do **not** need Python, Visual Studio, or the CUDA Toolkit.
-
-## How to join
-
-1. Download this repository (Code → Download ZIP) and unzip it.
-2. Open PowerShell in that folder.
-3. Run:
+Needs an NVIDIA GPU, a current Game Ready/Studio driver, and the [VC++ x64 redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
 
 ```powershell
+git clone https://github.com/generation998/Puzzle140-Pool-Worker.git
+cd Puzzle140-Pool-Worker
 .\JoinWorker.bat
 ```
 
-That connects to `72.62.76.118:17403` on GPU `0`.
+Second GPU: `.\JoinWorker.bat 72.62.76.118 1`
 
-Second GPU on the same PC:
+## Linux / Vast.ai (build on the instance)
 
-```powershell
-.\JoinWorker.bat 72.62.76.118 1
+The `.exe` does not run on Linux. Build the CUDA worker **on the GPU box** (needs `nvcc` and `g++`). Use a CUDA 12.x devel image.
+
+If GitHub works:
+
+```bash
+git clone https://github.com/generation998/Puzzle140-Pool-Worker.git
+cd Puzzle140-Pool-Worker
+chmod +x JoinWorker.sh
+./JoinWorker.sh
 ```
 
-Leave the window open. You should see `[pool] job herd=tame` or `wild` and a jump rate (MJ/s). `OFFLINE-spool` means the server blipped; the GPU keeps walking and uploads when it is back.
+`JoinWorker.sh` runs `make` then connects to `72.62.76.118:17403`. Extra GPU: `./JoinWorker.sh 72.62.76.118 1`
 
-Press Ctrl+C then **Y** to stop.
+If `git`/`wget` to GitHub hangs (common on some Vast hosts), copy this folder from your PC:
+
+```powershell
+scp -P YOUR_SSH_PORT -r C:\Users\w4lly\Downloads\Puzzle140-Pool-Worker root@VAST_HOST:/workspace/
+```
+
+Then on the instance:
+
+```bash
+cd /workspace/Puzzle140-Pool-Worker
+chmod +x JoinWorker.sh
+./JoinWorker.sh
+```
 
 ## How the pool works
 
-Every GPU walks the **same** puzzle-140 range with the same jump table. Each client is assigned **tame** or **wild** only. Distinguished points go to the server. A match is recovered **only on the server**.
+Every GPU walks the same puzzle-140 range. Each client is tame or wild only. Distinguished points go to the server. A match is recovered only on the server. Two clients are enough for both herds.
 
-You need both herds in the pool (any two clients is enough). One machine still helps.
-
-Expected work is about `2^70.5` jumps. One GPU will not finish this in a lifetime. More GPUs sharing this table raise the combined rate. They do not split the range.
-
-## Files
-
-| File | Role |
-|---|---|
-| `JoinWorker.bat` | Start the worker |
-| `tools\VanitySearchKang3.exe` | CUDA kangaroo client |
-
-Do not copy anything from a server `secrets` or `work` folder onto your PC.
+Expected work is about `2^70.5` jumps. More GPUs raise the combined rate. They do not split the range.
 
 ## License
 
-AGPLv3. Binary is derived from [JeanLucPons/VanitySearch](https://github.com/JeanLucPons/VanitySearch) with a pool client. Corresponding source lives in the `VanitySearch-Bitcrack-kangaroo` tree used to build `VanitySearchKang3.exe`.
+AGPLv3, derived from [JeanLucPons/VanitySearch](https://github.com/JeanLucPons/VanitySearch).
