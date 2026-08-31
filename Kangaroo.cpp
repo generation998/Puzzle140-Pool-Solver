@@ -311,7 +311,12 @@ void Kangaroo::initKangaroos(int totalK, std::vector<uint64_t>& px,
 			isTame = ((idx % 2) == (int)KANG_TAME);
 		if (isTame) {
 			if (tameLeft == 0) {
-				td.Rand(&rangeSize);
+				// GPU stores 128-bit d only. A 140-bit draw made the point
+				// (start+d)*G while the kernel tracked d truncated to 128 bits.
+				if (rangeBits > 125)
+					td.Rand(125);
+				else
+					td.Rand(&rangeSize);
 				if (td.IsZero())
 					td.SetInt32(1);
 				Int tpriv;
@@ -330,7 +335,10 @@ void Kangaroo::initKangaroos(int totalK, std::vector<uint64_t>& px,
 				? (uint32_t)((uint64_t)idx % M)
 				: (uint32_t)(((uint64_t)idx / 2) % M);
 			if (wildLeft[t] == 0) {
-				wd[t].Rand(&rangeSize);
+				if (rangeBits > 125)
+					wd[t].Rand(125);
+				else
+					wd[t].Rand(&rangeSize);
 				if (wd[t].IsZero())
 					wd[t].SetInt32(1);
 				Point extra = secp->ComputePublicKey(&wd[t]);
