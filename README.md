@@ -2,7 +2,7 @@
 
 Join the public kangaroo distinguished-point hunt for [Bitcoin Puzzle 140](https://privatekeys.pw/puzzles/bitcoin-puzzle-tx).
 
-This is interval ECDLP on the published puzzle-140 pubkey. It does not search Bitcoin addresses.
+This is interval ECDLP on the published puzzle-140 pubkey.
 
 ## Windows (ready binary)
 
