@@ -34,7 +34,7 @@ chmod +x JoinWorker.sh
 If `git`/`wget` to GitHub hangs (common on some Vast hosts), copy this folder from your PC:
 
 ```powershell
-scp -P YOUR_SSH_PORT -r C:\Users\w4lly\Downloads\Puzzle140-Pool-Worker root@VAST_HOST:/workspace/
+scp -P YOUR_SSH_PORT -r \Puzzle140-Pool-Worker root@VAST_HOST:/workspace/
 ```
 
 Then on the instance:
