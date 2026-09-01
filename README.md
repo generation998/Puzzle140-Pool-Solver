@@ -9,8 +9,8 @@ This is interval ECDLP on the published puzzle-140 pubkey.
 Needs an NVIDIA GPU, a current Game Ready/Studio driver, and the [VC++ x64 redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
 
 ```powershell
-git clone https://github.com/generation998/Puzzle140-Pool-Worker.git
-cd Puzzle140-Pool-Worker
+git clone https://github.com/generation998/Puzzle140-Pool-Solver.git
+cd Puzzle140-Pool-Solver
 .\JoinWorker.bat
 ```
 
@@ -23,8 +23,8 @@ The `.exe` does not run on Linux. Build the CUDA worker **on the GPU box** (need
 If GitHub works:
 
 ```bash
-git clone https://github.com/generation998/Puzzle140-Pool-Worker.git
-cd Puzzle140-Pool-Worker
+git clone https://github.com/generation998/Puzzle140-Pool-Solver.git
+cd Puzzle140-Pool-Solver
 chmod +x JoinWorker.sh
 ./JoinWorker.sh
 ```
@@ -40,7 +40,7 @@ scp -P YOUR_SSH_PORT -r \Puzzle140-Pool-Worker root@VAST_HOST:/workspace/
 Then on the instance:
 
 ```bash
-cd /workspace/Puzzle140-Pool-Worker
+cd /workspace/Puzzle140-Pool-Solver
 chmod +x JoinWorker.sh
 ./JoinWorker.sh
 ```
@@ -53,4 +53,4 @@ Expected work is about `2^70.5` jumps. More GPUs raise the combined rate. They d
 
 ## License
 
-AGPLv3, derived from [JeanLucPons/VanitySearch](https://github.com/JeanLucPons/VanitySearch).
+AGPLv3
