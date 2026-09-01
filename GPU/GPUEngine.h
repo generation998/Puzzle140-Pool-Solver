@@ -8,8 +8,8 @@
 #define GPU_GRP_SIZE 128
 #define NB_JUMP 32
 #define NB_RUN 64
-#define KSIZE 10
-#define ITEM_SIZE 56
+#define KSIZE 12
+#define ITEM_SIZE 72
 #define ITEM_SIZE32 (ITEM_SIZE/4)
 
 #define KANG_TAME  0u
@@ -17,7 +17,7 @@
 
 struct KANG_DP {
 	uint64_t x[4];
-	uint64_t d[2];
+	uint64_t d[4];
 	uint64_t kIdx;
 };
 
@@ -28,7 +28,7 @@ public:
 	GPUEngine(int gpuId, uint32_t maxFound);
 	~GPUEngine();
 
-	bool SetJumps(const uint64_t jx[NB_JUMP][4], const uint64_t jy[NB_JUMP][4], const uint64_t jd[NB_JUMP][2]);
+	bool SetJumps(const uint64_t jx[NB_JUMP][4], const uint64_t jy[NB_JUMP][4], const uint64_t jd[NB_JUMP][4]);
 	void SetDPMask(uint64_t mask);
 	bool SetKangaroos(const uint64_t* px, const uint64_t* py, const uint64_t* dist);
 	bool GetKangaroos(uint64_t* px, uint64_t* py, uint64_t* dist);

@@ -93,13 +93,13 @@ int GPUEngine::GetNbKangaroo() { return nbThread * GPU_GRP_SIZE; }
 int GPUEngine::GetGroupSize() { return GPU_GRP_SIZE; }
 int GPUEngine::GetStepSize() { return NB_RUN; }
 
-bool GPUEngine::SetJumps(const uint64_t jx[NB_JUMP][4], const uint64_t jy[NB_JUMP][4], const uint64_t jd[NB_JUMP][2]) {
+bool GPUEngine::SetJumps(const uint64_t jx[NB_JUMP][4], const uint64_t jy[NB_JUMP][4], const uint64_t jd[NB_JUMP][4]) {
 	cudaError_t err;
 	err = cudaMemcpyToSymbol(jPx, jx, sizeof(uint64_t) * NB_JUMP * 4);
 	if (err != cudaSuccess) { printf("GPUEngine: jPx: %s\n", cudaGetErrorString(err)); return false; }
 	err = cudaMemcpyToSymbol(jPy, jy, sizeof(uint64_t) * NB_JUMP * 4);
 	if (err != cudaSuccess) { printf("GPUEngine: jPy: %s\n", cudaGetErrorString(err)); return false; }
-	err = cudaMemcpyToSymbol(jD, jd, sizeof(uint64_t) * NB_JUMP * 2);
+	err = cudaMemcpyToSymbol(jD, jd, sizeof(uint64_t) * NB_JUMP * 4);
 	if (err != cudaSuccess) { printf("GPUEngine: jD: %s\n", cudaGetErrorString(err)); return false; }
 	return true;
 }
@@ -128,8 +128,10 @@ bool GPUEngine::SetKangaroos(const uint64_t* px, const uint64_t* py, const uint6
 				inputKangarooPinned[g * strideSize + t + 5 * nbThreadPerGroup] = py[(size_t)idx * 4 + 1];
 				inputKangarooPinned[g * strideSize + t + 6 * nbThreadPerGroup] = py[(size_t)idx * 4 + 2];
 				inputKangarooPinned[g * strideSize + t + 7 * nbThreadPerGroup] = py[(size_t)idx * 4 + 3];
-				inputKangarooPinned[g * strideSize + t + 8 * nbThreadPerGroup] = dist[(size_t)idx * 2 + 0];
-				inputKangarooPinned[g * strideSize + t + 9 * nbThreadPerGroup] = dist[(size_t)idx * 2 + 1];
+				inputKangarooPinned[g * strideSize + t + 8 * nbThreadPerGroup] = dist[(size_t)idx * 4 + 0];
+				inputKangarooPinned[g * strideSize + t + 9 * nbThreadPerGroup] = dist[(size_t)idx * 4 + 1];
+				inputKangarooPinned[g * strideSize + t + 10 * nbThreadPerGroup] = dist[(size_t)idx * 4 + 2];
+				inputKangarooPinned[g * strideSize + t + 11 * nbThreadPerGroup] = dist[(size_t)idx * 4 + 3];
 				idx++;
 			}
 		}
@@ -165,8 +167,10 @@ bool GPUEngine::GetKangaroos(uint64_t* px, uint64_t* py, uint64_t* dist) {
 				py[(size_t)idx * 4 + 1] = inputKangarooPinned[g * strideSize + t + 5 * nbThreadPerGroup];
 				py[(size_t)idx * 4 + 2] = inputKangarooPinned[g * strideSize + t + 6 * nbThreadPerGroup];
 				py[(size_t)idx * 4 + 3] = inputKangarooPinned[g * strideSize + t + 7 * nbThreadPerGroup];
-				dist[(size_t)idx * 2 + 0] = inputKangarooPinned[g * strideSize + t + 8 * nbThreadPerGroup];
-				dist[(size_t)idx * 2 + 1] = inputKangarooPinned[g * strideSize + t + 9 * nbThreadPerGroup];
+				dist[(size_t)idx * 4 + 0] = inputKangarooPinned[g * strideSize + t + 8 * nbThreadPerGroup];
+				dist[(size_t)idx * 4 + 1] = inputKangarooPinned[g * strideSize + t + 9 * nbThreadPerGroup];
+				dist[(size_t)idx * 4 + 2] = inputKangarooPinned[g * strideSize + t + 10 * nbThreadPerGroup];
+				dist[(size_t)idx * 4 + 3] = inputKangarooPinned[g * strideSize + t + 11 * nbThreadPerGroup];
 				idx++;
 			}
 		}
@@ -228,8 +232,8 @@ bool GPUEngine::Launch(std::vector<KANG_DP>& dps, bool spinWait) {
 		uint64_t* x = (uint64_t*)itemPtr;
 		it.x[0] = x[0]; it.x[1] = x[1]; it.x[2] = x[2]; it.x[3] = x[3];
 		uint64_t* d = (uint64_t*)(itemPtr + 8);
-		it.d[0] = d[0]; it.d[1] = d[1];
-		it.kIdx = *((uint64_t*)(itemPtr + 12));
+		it.d[0] = d[0]; it.d[1] = d[1]; it.d[2] = d[2]; it.d[3] = d[3];
+		it.kIdx = *((uint64_t*)(itemPtr + 16));
 		dps.push_back(it);
 	}
 

@@ -34,7 +34,7 @@ private:
 
 	struct DPRec {
 		uint64_t x[4];
-		uint64_t d[2];
+		uint64_t d[4];
 		uint32_t herd;
 		uint32_t target;
 	};
@@ -67,7 +67,7 @@ private:
 
 	uint64_t jx[NB_JUMP][4];
 	uint64_t jy[NB_JUMP][4];
-	uint64_t jd[NB_JUMP][2];
+	uint64_t jd[NB_JUMP][4];
 
 	std::unordered_map<uint64_t, std::vector<DPRec>> table;
 	uint64_t nbDP;

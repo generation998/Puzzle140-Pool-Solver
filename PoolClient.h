@@ -28,7 +28,7 @@ struct PoolJob {
 
 struct PoolDP {
 	uint64_t x[4];
-	uint64_t d[2];
+	uint64_t d[4];
 	uint32_t target;
 };
 

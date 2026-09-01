@@ -11,20 +11,22 @@
 #define NB_RUN 64
 #endif
 #ifndef KSIZE
-#define KSIZE 10
+#define KSIZE 12
 #endif
 #ifndef ITEM_SIZE
-#define ITEM_SIZE 56
+#define ITEM_SIZE 72
 #define ITEM_SIZE32 (ITEM_SIZE/4)
 #endif
 
-__device__ __constant__ uint64_t jD[NB_JUMP][2];
+__device__ __constant__ uint64_t jD[NB_JUMP][4];
 __device__ __constant__ uint64_t jPx[NB_JUMP][4];
 __device__ __constant__ uint64_t jPy[NB_JUMP][4];
 
-#define Add128(r,a) { \
+#define Add256(r,a) { \
 	UADDO1((r)[0], (a)[0]); \
-	UADD1((r)[1], (a)[1]); }
+	UADDC1((r)[1], (a)[1]); \
+	UADDC1((r)[2], (a)[2]); \
+	UADD1((r)[3], (a)[3]); }
 
 #define OutputDP(x,d,idx) {\
 	out[pos*ITEM_SIZE32 + 1] = ((uint32_t *)(x))[0]; \
@@ -39,11 +41,15 @@ __device__ __constant__ uint64_t jPy[NB_JUMP][4];
 	out[pos*ITEM_SIZE32 + 10] = ((uint32_t *)(d))[1]; \
 	out[pos*ITEM_SIZE32 + 11] = ((uint32_t *)(d))[2]; \
 	out[pos*ITEM_SIZE32 + 12] = ((uint32_t *)(d))[3]; \
-	out[pos*ITEM_SIZE32 + 13] = ((uint32_t *)(idx))[0]; \
-	out[pos*ITEM_SIZE32 + 14] = ((uint32_t *)(idx))[1]; \
+	out[pos*ITEM_SIZE32 + 13] = ((uint32_t *)(d))[4]; \
+	out[pos*ITEM_SIZE32 + 14] = ((uint32_t *)(d))[5]; \
+	out[pos*ITEM_SIZE32 + 15] = ((uint32_t *)(d))[6]; \
+	out[pos*ITEM_SIZE32 + 16] = ((uint32_t *)(d))[7]; \
+	out[pos*ITEM_SIZE32 + 17] = ((uint32_t *)(idx))[0]; \
+	out[pos*ITEM_SIZE32 + 18] = ((uint32_t *)(idx))[1]; \
 }
 
-__device__ void LoadKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64_t py[GPU_GRP_SIZE][4], uint64_t dist[GPU_GRP_SIZE][2]) {
+__device__ void LoadKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64_t py[GPU_GRP_SIZE][4], uint64_t dist[GPU_GRP_SIZE][4]) {
 	__syncthreads();
 	for (int g = 0; g < GPU_GRP_SIZE; g++) {
 		uint32_t stride = g * KSIZE * blockDim.x;
@@ -57,10 +63,12 @@ __device__ void LoadKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64_
 		py[g][3] = a[IDX + 7 * blockDim.x + stride];
 		dist[g][0] = a[IDX + 8 * blockDim.x + stride];
 		dist[g][1] = a[IDX + 9 * blockDim.x + stride];
+		dist[g][2] = a[IDX + 10 * blockDim.x + stride];
+		dist[g][3] = a[IDX + 11 * blockDim.x + stride];
 	}
 }
 
-__device__ void StoreKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64_t py[GPU_GRP_SIZE][4], uint64_t dist[GPU_GRP_SIZE][2]) {
+__device__ void StoreKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64_t py[GPU_GRP_SIZE][4], uint64_t dist[GPU_GRP_SIZE][4]) {
 	__syncthreads();
 	for (int g = 0; g < GPU_GRP_SIZE; g++) {
 		uint32_t stride = g * KSIZE * blockDim.x;
@@ -74,6 +82,8 @@ __device__ void StoreKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64
 		a[IDX + 7 * blockDim.x + stride] = py[g][3];
 		a[IDX + 8 * blockDim.x + stride] = dist[g][0];
 		a[IDX + 9 * blockDim.x + stride] = dist[g][1];
+		a[IDX + 10 * blockDim.x + stride] = dist[g][2];
+		a[IDX + 11 * blockDim.x + stride] = dist[g][3];
 	}
 }
 
@@ -101,7 +111,7 @@ __device__ __noinline__ void _ModInvGrouped(uint64_t r[GPU_GRP_SIZE][4]) {
 __device__ void ComputeKangaroos(uint64_t* kangaroos, uint32_t maxFound, uint32_t* out, uint64_t dpMask) {
 	uint64_t px[GPU_GRP_SIZE][4];
 	uint64_t py[GPU_GRP_SIZE][4];
-	uint64_t dist[GPU_GRP_SIZE][2];
+	uint64_t dist[GPU_GRP_SIZE][4];
 	uint64_t dx[GPU_GRP_SIZE][4];
 	uint64_t dy[4];
 	uint64_t rx[4];
@@ -142,7 +152,7 @@ __device__ void ComputeKangaroos(uint64_t* kangaroos, uint32_t maxFound, uint32_
 
 			Load256(px[g], rx);
 			Load256(py[g], ry);
-			Add128(dist[g], jD[jmp]);
+			Add256(dist[g], jD[jmp]);
 
 			if ((px[g][3] & dpMask) == 0) {
 				uint32_t pos = atomicAdd(out, 1);

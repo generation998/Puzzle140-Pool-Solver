@@ -19,12 +19,12 @@ static void setHex(Int& i, const std::string& s) {
 	i.SetBase16(&buf[0]);
 }
 
-static void intFrom128(Int& i, const uint64_t d[2]) {
+static void intFrom256(Int& i, const uint64_t d[4]) {
 	i.SetInt32(0);
 	i.bits64[0] = d[0];
 	i.bits64[1] = d[1];
-	i.bits64[2] = 0;
-	i.bits64[3] = 0;
+	i.bits64[2] = d[2];
+	i.bits64[3] = d[3];
 	i.bits64[4] = 0;
 }
 
@@ -183,8 +183,10 @@ Kangaroo::Kangaroo(Secp256K1* secp, const std::string& pubkeyFile, const std::st
 	rangeBits = rangeSize.GetBitLength();
 	if (rangeBits < 8)
 		rangeBits = 8;
-	if (rangeBits > 125)
-		fprintf(stdout, "[WARNING] Range is 2^%d; GPU distance is 128-bit (JLP limit ~125 bits).\n", rangeBits);
+	if (rangeBits > 256)
+		fprintf(stdout, "[WARNING] Range is 2^%d; GPU distance is 256-bit.\n", rangeBits);
+	else
+		fprintf(stdout, "GPU distance is 256-bit (range 2^%d).\n", rangeBits);
 
 	if (generateJumps)
 		initJumps();
@@ -206,6 +208,8 @@ bool Kangaroo::ApplyJobJumps(const PoolJob& job) {
 		}
 		jd[i][0] = d.bits64[0];
 		jd[i][1] = d.bits64[1];
+		jd[i][2] = d.bits64[2];
+		jd[i][3] = d.bits64[3];
 	}
 	fprintf(stdout, "Jump table loaded from pool server (%d jumps)\n", NB_JUMP);
 	return true;
@@ -239,7 +243,7 @@ void Kangaroo::chooseDP(int totalK) {
 
 void Kangaroo::initJumps() {
 	int jumpBit = rangeBits / 2 + 1;
-	if (jumpBit > 128) jumpBit = 128;
+	if (jumpBit > 256) jumpBit = 256;
 	if (jumpBit < 2) jumpBit = 2;
 
 	rseed(0x600DCAFE);
@@ -260,6 +264,8 @@ void Kangaroo::initJumps() {
 			totalDist.Add(&d);
 			jd[i][0] = d.bits64[0];
 			jd[i][1] = d.bits64[1];
+			jd[i][2] = d.bits64[2];
+			jd[i][3] = d.bits64[3];
 			Point p = secp->ComputePublicKey(&d);
 			for (int k = 0; k < 4; k++) {
 				jx[i][k] = p.x.bits64[k];
@@ -280,7 +286,7 @@ void Kangaroo::initKangaroos(int totalK, std::vector<uint64_t>& px,
 
 	px.assign((size_t)totalK * 4, 0);
 	py.assign((size_t)totalK * 4, 0);
-	dist.assign((size_t)totalK * 2, 0);
+	dist.assign((size_t)totalK * 4, 0);
 
 	const uint32_t M = (uint32_t)pubs.size();
 	if (herdMode == (int)KANG_TAME)
@@ -311,12 +317,7 @@ void Kangaroo::initKangaroos(int totalK, std::vector<uint64_t>& px,
 			isTame = ((idx % 2) == (int)KANG_TAME);
 		if (isTame) {
 			if (tameLeft == 0) {
-				// GPU stores 128-bit d only. A 140-bit draw made the point
-				// (start+d)*G while the kernel tracked d truncated to 128 bits.
-				if (rangeBits > 125)
-					td.Rand(125);
-				else
-					td.Rand(&rangeSize);
+				td.Rand(&rangeSize);
 				if (td.IsZero())
 					td.SetInt32(1);
 				Int tpriv;
@@ -335,10 +336,7 @@ void Kangaroo::initKangaroos(int totalK, std::vector<uint64_t>& px,
 				? (uint32_t)((uint64_t)idx % M)
 				: (uint32_t)(((uint64_t)idx / 2) % M);
 			if (wildLeft[t] == 0) {
-				if (rangeBits > 125)
-					wd[t].Rand(125);
-				else
-					wd[t].Rand(&rangeSize);
+				wd[t].Rand(&rangeSize);
 				if (wd[t].IsZero())
 					wd[t].SetInt32(1);
 				Point extra = secp->ComputePublicKey(&wd[t]);
@@ -359,8 +357,10 @@ void Kangaroo::initKangaroos(int totalK, std::vector<uint64_t>& px,
 		py[(size_t)idx * 4 + 1] = p.y.bits64[1];
 		py[(size_t)idx * 4 + 2] = p.y.bits64[2];
 		py[(size_t)idx * 4 + 3] = p.y.bits64[3];
-		dist[(size_t)idx * 2 + 0] = dval.bits64[0];
-		dist[(size_t)idx * 2 + 1] = dval.bits64[1];
+		dist[(size_t)idx * 4 + 0] = dval.bits64[0];
+		dist[(size_t)idx * 4 + 1] = dval.bits64[1];
+		dist[(size_t)idx * 4 + 2] = dval.bits64[2];
+		dist[(size_t)idx * 4 + 3] = dval.bits64[3];
 		if ((idx & 0x3FFFF) == 0) {
 			fprintf(stdout, "  init %d / %d\r", idx, totalK);
 			fflush(stdout);
@@ -370,21 +370,21 @@ void Kangaroo::initKangaroos(int totalK, std::vector<uint64_t>& px,
 
 	Int chk;
 	if (herdMode == (int)KANG_WILD1) {
-		intFrom128(chk, &dist[0]);
+		intFrom256(chk, &dist[0]);
 		Point extra = secp->ComputePublicKey(&chk);
 		Point Wchk = secp->AddDirect(pubs[0], extra);
 		bool wildOk = Wchk.x.bits64[0] == px[0] && Wchk.x.bits64[1] == px[1]
 			&& Wchk.x.bits64[2] == px[2] && Wchk.x.bits64[3] == px[3];
 		fprintf(stdout, "Init wild[0] %s\n", wildOk ? "OK" : "MISMATCH vs Q+d*G");
 	} else {
-		intFrom128(chk, &dist[0]);
+		intFrom256(chk, &dist[0]);
 		chk.Add(&ks->ksStart);
 		Point Pchk = secp->ComputePublicKey(&chk);
 		bool tameOk = Pchk.x.bits64[0] == px[0] && Pchk.x.bits64[1] == px[1]
 			&& Pchk.x.bits64[2] == px[2] && Pchk.x.bits64[3] == px[3];
 		fprintf(stdout, "Init tame[0] %s\n", tameOk ? "OK" : "MISMATCH vs (start+d)*G");
 		if (herdMode < 0 && totalK > 1) {
-			intFrom128(chk, &dist[2]);
+			intFrom256(chk, &dist[4]);
 			Point extra = secp->ComputePublicKey(&chk);
 			Point Wchk = secp->AddDirect(pubs[0], extra);
 			bool wildOk = Wchk.x.bits64[0] == px[4] && Wchk.x.bits64[1] == px[5]
@@ -446,8 +446,8 @@ bool Kangaroo::recoverFromPair(const DPRec& a, const DPRec& b) {
 	}
 
 	Int dt, dw;
-	intFrom128(dt, tame->d);
-	intFrom128(dw, wild->d);
+	intFrom256(dt, tame->d);
+	intFrom256(dw, wild->d);
 	uint32_t target = wild->target;
 
 	Int cands[4];
@@ -625,8 +625,10 @@ bool Kangaroo::CheckGPU(int gpuId) {
 		Y.bits64[1] = cpy[(size_t)idx * 4 + 1];
 		Y.bits64[2] = cpy[(size_t)idx * 4 + 2];
 		Y.bits64[3] = cpy[(size_t)idx * 4 + 3];
-		D.bits64[0] = cd[(size_t)idx * 2 + 0];
-		D.bits64[1] = cd[(size_t)idx * 2 + 1];
+		D.bits64[0] = cd[(size_t)idx * 4 + 0];
+		D.bits64[1] = cd[(size_t)idx * 4 + 1];
+		D.bits64[2] = cd[(size_t)idx * 4 + 2];
+		D.bits64[3] = cd[(size_t)idx * 4 + 3];
 		Point P(&X, &Y, &one);
 
 		for (int run = 0; run < NB_RUN; run++) {
@@ -639,17 +641,19 @@ bool Kangaroo::CheckGPU(int gpuId) {
 			}
 			Point J(&Jx, &Jy, &one);
 			P = secp->AddDirect(P, J);
-			D.bits64[0] += jd[jmp][0];
-			uint64_t c = (D.bits64[0] < jd[jmp][0]) ? 1 : 0;
-			D.bits64[1] += jd[jmp][1] + c;
+			Int jdist;
+			intFrom256(jdist, jd[jmp]);
+			D.Add(&jdist);
 		}
 
 		bool ok = P.x.bits64[0] == px[(size_t)idx * 4 + 0]
 			&& P.x.bits64[1] == px[(size_t)idx * 4 + 1]
 			&& P.x.bits64[2] == px[(size_t)idx * 4 + 2]
 			&& P.x.bits64[3] == px[(size_t)idx * 4 + 3]
-			&& D.bits64[0] == distv[(size_t)idx * 2 + 0]
-			&& D.bits64[1] == distv[(size_t)idx * 2 + 1];
+			&& D.bits64[0] == distv[(size_t)idx * 4 + 0]
+			&& D.bits64[1] == distv[(size_t)idx * 4 + 1]
+			&& D.bits64[2] == distv[(size_t)idx * 4 + 2]
+			&& D.bits64[3] == distv[(size_t)idx * 4 + 3];
 		if (!ok) {
 			if (faults < 3) {
 				fprintf(stdout, "MISMATCH idx=%d\n", idx);

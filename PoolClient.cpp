@@ -290,13 +290,15 @@ bool PoolClient::SendDPs(const std::vector<PoolDP>& dps) {
 		return false;
 	for (size_t i = 0; i < dps.size(); i++) {
 		snprintf(buf, sizeof(buf),
-			"%llx %llx %llx %llx %llx %llx %u",
+			"%llx %llx %llx %llx %llx %llx %llx %llx %u",
 			(unsigned long long)dps[i].x[0],
 			(unsigned long long)dps[i].x[1],
 			(unsigned long long)dps[i].x[2],
 			(unsigned long long)dps[i].x[3],
 			(unsigned long long)dps[i].d[0],
 			(unsigned long long)dps[i].d[1],
+			(unsigned long long)dps[i].d[2],
+			(unsigned long long)dps[i].d[3],
 			dps[i].target);
 		if (!sendLine(buf))
 			return false;
