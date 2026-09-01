@@ -29,7 +29,9 @@ public:
 	~GPUEngine();
 
 	bool SetJumps(const uint64_t jx[NB_JUMP][4], const uint64_t jy[NB_JUMP][4], const uint64_t jd[NB_JUMP][4]);
+	void SetDistLimbs(int limbs);
 	void SetDPMask(uint64_t mask);
+	int GetDistLimbs() const { return distLimbs; }
 	bool SetKangaroos(const uint64_t* px, const uint64_t* py, const uint64_t* dist);
 	bool GetKangaroos(uint64_t* px, uint64_t* py, uint64_t* dist);
 	bool Launch(std::vector<KANG_DP>& dps, bool spinWait = true);
@@ -50,6 +52,7 @@ private:
 	uint32_t maxFound;
 	uint32_t outputSize;
 	uint64_t dpMask;
+	int distLimbs;
 	bool lostWarning;
 	bool initialised;
 

@@ -14,9 +14,19 @@
 #include "GPUMath.h"
 #include "GPUKang.h"
 
-__global__ void comp_kangaroos(uint64_t* kangaroos, uint32_t maxFound, uint32_t* found, uint64_t dpMask) {
+__global__ void comp_kangaroos_d128(uint64_t* kangaroos, uint32_t maxFound, uint32_t* found, uint64_t dpMask) {
 	int xPtr = (blockIdx.x * blockDim.x * GPU_GRP_SIZE) * KSIZE;
-	ComputeKangaroos(kangaroos + xPtr, maxFound, found, dpMask);
+	ComputeKangaroos<2>(kangaroos + xPtr, maxFound, found, dpMask);
+}
+
+__global__ void comp_kangaroos_d192(uint64_t* kangaroos, uint32_t maxFound, uint32_t* found, uint64_t dpMask) {
+	int xPtr = (blockIdx.x * blockDim.x * GPU_GRP_SIZE) * KSIZE;
+	ComputeKangaroos<3>(kangaroos + xPtr, maxFound, found, dpMask);
+}
+
+__global__ void comp_kangaroos_d256(uint64_t* kangaroos, uint32_t maxFound, uint32_t* found, uint64_t dpMask) {
+	int xPtr = (blockIdx.x * blockDim.x * GPU_GRP_SIZE) * KSIZE;
+	ComputeKangaroos<4>(kangaroos + xPtr, maxFound, found, dpMask);
 }
 
 static int _ConvertSMVer2Cores(int major, int minor) {
@@ -35,6 +45,7 @@ GPUEngine::GPUEngine(int gpuId, uint32_t maxFound) {
 	initialised = false;
 	lostWarning = false;
 	dpMask = 0;
+	distLimbs = 3;
 	inputKangaroo = NULL;
 	inputKangarooPinned = NULL;
 	outputItem = NULL;
@@ -102,6 +113,12 @@ bool GPUEngine::SetJumps(const uint64_t jx[NB_JUMP][4], const uint64_t jy[NB_JUM
 	err = cudaMemcpyToSymbol(jD, jd, sizeof(uint64_t) * NB_JUMP * 4);
 	if (err != cudaSuccess) { printf("GPUEngine: jD: %s\n", cudaGetErrorString(err)); return false; }
 	return true;
+}
+
+void GPUEngine::SetDistLimbs(int limbs) {
+	if (limbs <= 2) distLimbs = 2;
+	else if (limbs == 3) distLimbs = 3;
+	else distLimbs = 4;
 }
 
 void GPUEngine::SetDPMask(uint64_t mask) {
@@ -186,7 +203,13 @@ bool GPUEngine::GetKangaroos(uint64_t* px, uint64_t* py, uint64_t* dist) {
 
 bool GPUEngine::callKernel() {
 	cudaMemset(outputItem, 0, 4);
-	comp_kangaroos << < nbThread / nbThreadPerGroup, nbThreadPerGroup >> > (inputKangaroo, maxFound, outputItem, dpMask);
+	int blocks = nbThread / nbThreadPerGroup;
+	if (distLimbs <= 2)
+		comp_kangaroos_d128 << < blocks, nbThreadPerGroup >> > (inputKangaroo, maxFound, outputItem, dpMask);
+	else if (distLimbs == 3)
+		comp_kangaroos_d192 << < blocks, nbThreadPerGroup >> > (inputKangaroo, maxFound, outputItem, dpMask);
+	else
+		comp_kangaroos_d256 << < blocks, nbThreadPerGroup >> > (inputKangaroo, maxFound, outputItem, dpMask);
 	cudaError_t err = cudaGetLastError();
 	if (err != cudaSuccess) {
 		printf("GPUEngine: Kernel: %s\n", cudaGetErrorString(err));

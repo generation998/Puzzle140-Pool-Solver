@@ -22,12 +22,6 @@ __device__ __constant__ uint64_t jD[NB_JUMP][4];
 __device__ __constant__ uint64_t jPx[NB_JUMP][4];
 __device__ __constant__ uint64_t jPy[NB_JUMP][4];
 
-#define Add256(r,a) { \
-	UADDO1((r)[0], (a)[0]); \
-	UADDC1((r)[1], (a)[1]); \
-	UADDC1((r)[2], (a)[2]); \
-	UADD1((r)[3], (a)[3]); }
-
 #define OutputDP(x,d,idx) {\
 	out[pos*ITEM_SIZE32 + 1] = ((uint32_t *)(x))[0]; \
 	out[pos*ITEM_SIZE32 + 2] = ((uint32_t *)(x))[1]; \
@@ -49,7 +43,23 @@ __device__ __constant__ uint64_t jPy[NB_JUMP][4];
 	out[pos*ITEM_SIZE32 + 18] = ((uint32_t *)(idx))[1]; \
 }
 
-__device__ void LoadKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64_t py[GPU_GRP_SIZE][4], uint64_t dist[GPU_GRP_SIZE][4]) {
+template<int DL>
+__device__ __forceinline__ void AddDist(uint64_t* r, const uint64_t a[4]) {
+	UADDO1(r[0], a[0]);
+	if (DL == 2) {
+		UADD1(r[1], a[1]);
+	} else if (DL == 3) {
+		UADDC1(r[1], a[1]);
+		UADD1(r[2], a[2]);
+	} else {
+		UADDC1(r[1], a[1]);
+		UADDC1(r[2], a[2]);
+		UADD1(r[3], a[3]);
+	}
+}
+
+template<int DL>
+__device__ void LoadKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64_t py[GPU_GRP_SIZE][4], uint64_t dist[GPU_GRP_SIZE][DL]) {
 	__syncthreads();
 	for (int g = 0; g < GPU_GRP_SIZE; g++) {
 		uint32_t stride = g * KSIZE * blockDim.x;
@@ -63,12 +73,15 @@ __device__ void LoadKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64_
 		py[g][3] = a[IDX + 7 * blockDim.x + stride];
 		dist[g][0] = a[IDX + 8 * blockDim.x + stride];
 		dist[g][1] = a[IDX + 9 * blockDim.x + stride];
-		dist[g][2] = a[IDX + 10 * blockDim.x + stride];
-		dist[g][3] = a[IDX + 11 * blockDim.x + stride];
+		if (DL >= 3)
+			dist[g][2] = a[IDX + 10 * blockDim.x + stride];
+		if (DL >= 4)
+			dist[g][3] = a[IDX + 11 * blockDim.x + stride];
 	}
 }
 
-__device__ void StoreKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64_t py[GPU_GRP_SIZE][4], uint64_t dist[GPU_GRP_SIZE][4]) {
+template<int DL>
+__device__ void StoreKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64_t py[GPU_GRP_SIZE][4], uint64_t dist[GPU_GRP_SIZE][DL]) {
 	__syncthreads();
 	for (int g = 0; g < GPU_GRP_SIZE; g++) {
 		uint32_t stride = g * KSIZE * blockDim.x;
@@ -82,8 +95,10 @@ __device__ void StoreKangaroos(uint64_t* a, uint64_t px[GPU_GRP_SIZE][4], uint64
 		a[IDX + 7 * blockDim.x + stride] = py[g][3];
 		a[IDX + 8 * blockDim.x + stride] = dist[g][0];
 		a[IDX + 9 * blockDim.x + stride] = dist[g][1];
-		a[IDX + 10 * blockDim.x + stride] = dist[g][2];
-		a[IDX + 11 * blockDim.x + stride] = dist[g][3];
+		if (DL >= 3)
+			a[IDX + 10 * blockDim.x + stride] = dist[g][2];
+		if (DL >= 4)
+			a[IDX + 11 * blockDim.x + stride] = dist[g][3];
 	}
 }
 
@@ -108,10 +123,11 @@ __device__ __noinline__ void _ModInvGrouped(uint64_t r[GPU_GRP_SIZE][4]) {
 	Load256(r[0], inverse);
 }
 
+template<int DL>
 __device__ void ComputeKangaroos(uint64_t* kangaroos, uint32_t maxFound, uint32_t* out, uint64_t dpMask) {
 	uint64_t px[GPU_GRP_SIZE][4];
 	uint64_t py[GPU_GRP_SIZE][4];
-	uint64_t dist[GPU_GRP_SIZE][4];
+	uint64_t dist[GPU_GRP_SIZE][DL];
 	uint64_t dx[GPU_GRP_SIZE][4];
 	uint64_t dy[4];
 	uint64_t rx[4];
@@ -121,7 +137,7 @@ __device__ void ComputeKangaroos(uint64_t* kangaroos, uint32_t maxFound, uint32_
 	uint32_t jmp;
 	uint64_t Jx[4], Jy[4];
 
-	LoadKangaroos(kangaroos, px, py, dist);
+	LoadKangaroos<DL>(kangaroos, px, py, dist);
 
 	for (int run = 0; run < NB_RUN; run++) {
 		__syncthreads();
@@ -152,20 +168,23 @@ __device__ void ComputeKangaroos(uint64_t* kangaroos, uint32_t maxFound, uint32_
 
 			Load256(px[g], rx);
 			Load256(py[g], ry);
-			Add256(dist[g], jD[jmp]);
+			AddDist<DL>(dist[g], jD[jmp]);
 
 			if ((px[g][3] & dpMask) == 0) {
 				uint32_t pos = atomicAdd(out, 1);
 				if (pos < maxFound) {
 					uint64_t kIdx = (uint64_t)IDX + (uint64_t)g * (uint64_t)blockDim.x
 						+ (uint64_t)blockIdx.x * ((uint64_t)blockDim.x * GPU_GRP_SIZE);
-					OutputDP(px[g], dist[g], &kIdx);
+					uint64_t d4[4] = { dist[g][0], dist[g][1], 0, 0 };
+					if (DL >= 3) d4[2] = dist[g][2];
+					if (DL >= 4) d4[3] = dist[g][3];
+					OutputDP(px[g], d4, &kIdx);
 				}
 			}
 		}
 	}
 
-	StoreKangaroos(kangaroos, px, py, dist);
+	StoreKangaroos<DL>(kangaroos, px, py, dist);
 }
 
 #endif

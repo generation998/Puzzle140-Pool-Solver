@@ -183,10 +183,14 @@ Kangaroo::Kangaroo(Secp256K1* secp, const std::string& pubkeyFile, const std::st
 	rangeBits = rangeSize.GetBitLength();
 	if (rangeBits < 8)
 		rangeBits = 8;
-	if (rangeBits > 256)
-		fprintf(stdout, "[WARNING] Range is 2^%d; GPU distance is 256-bit.\n", rangeBits);
-	else
+	if (rangeBits <= 125)
+		fprintf(stdout, "GPU distance is 128-bit (range 2^%d, fast path).\n", rangeBits);
+	else if (rangeBits <= 188)
+		fprintf(stdout, "GPU distance is 192-bit (range 2^%d).\n", rangeBits);
+	else if (rangeBits <= 256)
 		fprintf(stdout, "GPU distance is 256-bit (range 2^%d).\n", rangeBits);
+	else
+		fprintf(stdout, "[WARNING] Range is 2^%d; GPU distance max is 256-bit.\n", rangeBits);
 
 	if (generateJumps)
 		initJumps();
@@ -516,6 +520,8 @@ void Kangaroo::printStats(uint64_t jumps, double t0) {
 
 void Kangaroo::Search(int gpuId) {
 	GPUEngine g(gpuId, maxFound);
+	int limbs = (rangeBits <= 125) ? 2 : (rangeBits <= 188 ? 3 : 4);
+	g.SetDistLimbs(limbs);
 	int totalK = g.GetNbKangaroo();
 	int step = g.GetStepSize();
 	chooseDP(totalK);
@@ -591,6 +597,8 @@ void Kangaroo::Search(int gpuId) {
 
 bool Kangaroo::CheckGPU(int gpuId) {
 	GPUEngine g(gpuId, maxFound);
+	int limbs = (rangeBits <= 125) ? 2 : (rangeBits <= 188 ? 3 : 4);
+	g.SetDistLimbs(limbs);
 	int totalK = g.GetNbKangaroo();
 	int grp = g.GetGroupSize();
 	const int tPer = g.GetNbThreadPerGroup();
