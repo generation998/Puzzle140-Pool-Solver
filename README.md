@@ -47,7 +47,7 @@ chmod +x JoinWorker.sh
 
 ## How the pool works
 
-Every GPU walks the same puzzle-140 range. Each client is tame or wild only. Distinguished points go to the server. A match is recovered only on the server. Two clients are enough for both herds.
+Every GPU walks the same puzzle-140 range. Each client is tame or wild only. Distinguished points go to the server. Two clients are enough for both herds.
 
 Expected work is about `2^70.5` jumps. More GPUs raise the combined rate. They do not split the range.
 
